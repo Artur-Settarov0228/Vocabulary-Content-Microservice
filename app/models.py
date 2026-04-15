@@ -6,7 +6,7 @@ from app.database import Base
 class Vocabulary(Base):
     __tablename__ = "vocabulary"
 
-    word_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    word_id = Column(Integer, primary_key=True, autoincrement=True) 
     english_word = Column(String, nullable=False)
     part_of_speech = Column(String, nullable=True)
     phonetic_transcription = Column(String, nullable=True)

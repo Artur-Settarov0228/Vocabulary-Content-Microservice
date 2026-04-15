@@ -1,25 +1,36 @@
 from sqlalchemy.orm import Session
-from app import models, schemas  # To'liq import
+from uuid import UUID
+from app import models, schemas
 
-def get_word(db: Session, word_id: str):
-    return db.query(models.Vocabulary).filter(models.Vocabulary.word_id == word_id).first()
 
 def create_vocabulary(db: Session, word: schemas.WordCreate):
-    # Pydantic modelni dict ga o'tkazish (v2 da model_dump)
-    db_word = models.Vocabulary(**word.model_dump())
+    data = word.model_dump(mode="json")  # 🔥 BEST
+
+    db_word = models.Vocabulary(**data)
     db.add(db_word)
     db.commit()
     db.refresh(db_word)
     return db_word
 
-def update_vocabulary(db: Session, word_id: str, word_data: schemas.WordUpdate):
-    db_query = db.query(models.Vocabulary).filter(models.Vocabulary.word_id == word_id)
-    if db_query.first():
-        db_query.update(word_data.model_dump(exclude_unset=True), synchronize_session=False)
-        db.commit()
-    return db_query.first()
 
-def update_asset_cache(db: Session, word_id: str, asset: schemas.AssetUpdate):
+def get_word(db: Session, word_id: int):
+    return db.query(models.Vocabulary).filter(models.Vocabulary.word_id == word_id).first()
+
+
+def update_vocabulary(db: Session, word_id: UUID, word: schemas.WordUpdate):
+    db_word = get_word(db, word_id)
+    if not db_word:
+        return None
+
+    for key, value in word.model_dump(exclude_unset=True).items():
+        setattr(db_word, key, value)
+
+    db.commit()
+    db.refresh(db_word)
+    return db_word
+
+
+def update_asset_cache(db: Session, word_id: int, asset: schemas.AssetUpdate):
     db_word = get_word(db, word_id)
     if db_word:
         db_word.telegram_file_id = asset.telegram_file_id
@@ -27,7 +38,7 @@ def update_asset_cache(db: Session, word_id: str, asset: schemas.AssetUpdate):
         db.refresh(db_word)
     return db_word
 
-def soft_delete(db: Session, word_id: str):
+def soft_delete(db: Session, word_id: int):
     db_word = get_word(db, word_id)
     if db_word:
         db_word.is_active = False
